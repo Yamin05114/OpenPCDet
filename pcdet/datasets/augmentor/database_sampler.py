@@ -105,11 +105,11 @@ class DataBaseSampler(object):
         Returns:
         """
         a, b, c, d = road_planes
-        center_cam = calib.lidar_to_rect(gt_boxes[:, 0:3])
-        cur_height_cam = (-d - a * center_cam[:, 0] - c * center_cam[:, 2]) / b
-        center_cam[:, 1] = cur_height_cam
-        cur_lidar_height = calib.rect_to_lidar(center_cam)[:, 2]
-        mv_height = gt_boxes[:, 2] - gt_boxes[:, 5] / 2 - cur_lidar_height
+        center_cam = calib.lidar_to_rect(gt_boxes[:, 0:3])  # box bottom center in cam axis 
+        cur_height_cam = (-d - a * center_cam[:, 0] - c * center_cam[:, 2]) / b  # use box bottom center bev pos to get ground height
+        center_cam[:, 1] = cur_height_cam  # put box center height as ground height
+        cur_lidar_height = calib.rect_to_lidar(center_cam)[:, 2]  # map the box to lidar
+        mv_height = gt_boxes[:, 2] - gt_boxes[:, 5] / 2 - cur_lidar_height  # lidar box center is not bottom so change to bottom
         gt_boxes[:, 2] -= mv_height  # lidar view
         return gt_boxes, mv_height
 
