@@ -55,9 +55,12 @@ class GroupingOperation(Function):
         Args:
             ctx:
             features: (N1 + N2 ..., C) tensor of features to group
+                      sparse tensor描述
             features_batch_cnt: (batch_size) [N1 + N2 ...] tensor containing the indicies of features to group with
+                                每个点的batch idx
             idx: (M1 + M2 ..., nsample) tensor containing the indicies of features to group with
-            idx_batch_cnt: (batch_size) [M1 + M2 ...] tensor containing the indicies of features to group with
+                 ballquery的返回
+            idx_batch_cnt: (batch_size) [M1 + M2 ...] tensor containing the indicies of features to group with，每个点的batch idx
 
         Returns:
             output: (M1 + M2, C, nsample) tensor
