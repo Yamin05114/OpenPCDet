@@ -20,7 +20,8 @@ def bilinear_interpolate_torch(im, x, y):
 
     y0 = torch.floor(y).long()
     y1 = y0 + 1
-
+    
+    # 防止越界
     x0 = torch.clamp(x0, 0, im.shape[1] - 1)
     x1 = torch.clamp(x1, 0, im.shape[1] - 1)
     y0 = torch.clamp(y0, 0, im.shape[0] - 1)
@@ -30,7 +31,7 @@ def bilinear_interpolate_torch(im, x, y):
     Ib = im[y1, x0]
     Ic = im[y0, x1]
     Id = im[y1, x1]
-
+    # 距离决定weights
     wa = (x1.type_as(x) - x) * (y1.type_as(y) - y)
     wb = (x1.type_as(x) - x) * (y - y0.type_as(y))
     wc = (x - x0.type_as(x)) * (y1.type_as(y) - y)
@@ -46,14 +47,17 @@ class VoxelSetAbstraction(nn.Module):
         self.model_cfg = model_cfg
         self.voxel_size = voxel_size
         self.point_cloud_range = point_cloud_range
-
+        # SA_LAYER记录每一层的半径和点数
         SA_cfg = self.model_cfg.SA_LAYER
 
         self.SA_layers = nn.ModuleList()
         self.SA_layer_names = []
         self.downsample_times_map = {}
         c_in = 0
+        
+        # 那些需要产出点的feature
         for src_name in self.model_cfg.FEATURES_SOURCE:
+            # 这两个都是单独的abstraction，不是voxel格式
             if src_name in ['bev', 'raw_points']:
                 continue
             self.downsample_times_map[src_name] = SA_cfg[src_name].DOWNSAMPLE_FACTOR
