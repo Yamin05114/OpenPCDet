@@ -26,14 +26,16 @@ class StackSAModuleMSG(nn.Module):
         for i in range(len(radii)):
             radius = radii[i]
             nsample = nsamples[i]
+            # 每个球对应一个grouper
             self.groupers.append(pointnet2_utils.QueryAndGroup(radius, nsample, use_xyz=use_xyz))
             mlp_spec = mlps[i]
-            if use_xyz:
+            if use_xyz:  # 利用位置信息 xyz
                 mlp_spec[0] += 3
-
+            # 生成mlp
             shared_mlps = []
             for k in range(len(mlp_spec) - 1):
                 shared_mlps.extend([
+
                     nn.Conv2d(mlp_spec[k], mlp_spec[k + 1], kernel_size=1, bias=False),
                     nn.BatchNorm2d(mlp_spec[k + 1]),
                     nn.ReLU()
@@ -55,11 +57,11 @@ class StackSAModuleMSG(nn.Module):
 
     def forward(self, xyz, xyz_batch_cnt, new_xyz, new_xyz_batch_cnt, features=None, empty_voxel_set_zeros=True):
         """
-        :param xyz: (N1 + N2 ..., 3) tensor of the xyz coordinates of the features
-        :param xyz_batch_cnt: (batch_size), [N1, N2, ...]
-        :param new_xyz: (M1 + M2 ..., 3)
-        :param new_xyz_batch_cnt: (batch_size), [M1, M2, ...]
-        :param features: (N1 + N2 ..., C) tensor of the descriptors of the the features
+        :param xyz: (N1 + N2 ..., 3) tensor of the xyz coordinates of the features，spconv里面的sparse tensor位置
+        :param xyz_batch_cnt: (batch_size), [N1, N2, ...]，feature对应batch
+        :param new_xyz: (M1 + M2 ..., 3)，点云
+        :param new_xyz_batch_cnt: (batch_size), [M1, M2, ...]，batch idx的点云的点数
+        :param features: (N1 + N2 ..., C) tensor of the descriptors of the the features，spconv里面的feature
         :return:
             new_xyz: (M1 + M2 ..., 3) tensor of the new features' xyz
             new_features: (M1 + M2 ..., \sum_k(mlps[k][-1])) tensor of the new_features descriptors
@@ -69,7 +71,9 @@ class StackSAModuleMSG(nn.Module):
             new_features, ball_idxs = self.groupers[k](
                 xyz, xyz_batch_cnt, new_xyz, new_xyz_batch_cnt, features
             )  # (M1 + M2, C, nsample)
+            # channel first表示
             new_features = new_features.permute(1, 0, 2).unsqueeze(dim=0)  # (1, C, M1 + M2 ..., nsample)
+            # 经过mlp
             new_features = self.mlps[k](new_features)  # (1, C, M1 + M2 ..., nsample)
 
             if self.pool_method == 'max_pool':
