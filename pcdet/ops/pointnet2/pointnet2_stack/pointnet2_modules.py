@@ -11,9 +11,9 @@ class StackSAModuleMSG(nn.Module):
                  use_xyz: bool = True, pool_method='max_pool'):
         """
         Args:
-            radii: list of float, list of radii to group with
-            nsamples: list of int, number of samples in each ball query
-            mlps: list of list of int, spec of the pointnet before the global pooling for each scale
+            radii: list of float, list of radii to group with 所有的ball半径
+            nsamples: list of int, number of samples in each ball query 对应球型内点的数量
+            mlps: list of list of int, spec of the pointnet before the global pooling for each scale 对应求内mlp通道数
             use_xyz:
             pool_method: max_pool / avg_pool
         """
