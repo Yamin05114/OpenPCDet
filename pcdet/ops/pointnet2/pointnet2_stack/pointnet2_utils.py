@@ -37,7 +37,7 @@ class BallQuery(Function):
         empty_ball_mask = (idx[:, 0] == -1)
         idx[empty_ball_mask] = 0
         return idx, empty_ball_mask
-
+    #只计算索引不需要反向
     @staticmethod
     def backward(ctx, a=None):
         return None, None, None, None
