@@ -71,7 +71,7 @@ __global__ void ball_query_kernel_stack(int B, int M, float radius, int nsample,
             }
             idx[cnt] = k;
             ++cnt;
-            // 最多nsample个neighbor
+            // 填满的情况：最多nsample个neighbor，但不一定都填满
             if (cnt >= nsample) break;
         }
     }
