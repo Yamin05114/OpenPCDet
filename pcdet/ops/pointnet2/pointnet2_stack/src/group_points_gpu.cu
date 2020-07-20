@@ -70,31 +70,39 @@ void group_points_grad_kernel_launcher_stack(int B, int M, int C, int N, int nsa
 
 __global__ void group_points_kernel_stack(int B, int M, int C, int nsample,
     const float *features, const int *features_batch_cnt, const int *idx, const int *idx_batch_cnt, float *out) {
-    // :param features: (N1 + N2 ..., C) tensor of features to group
+    // M, nsample => M, C, nsample
+    // :param features: (N1 + N2 ..., C) tensor of features to group, sparse tensor跟spconv一样
     // :param features_batch_cnt: (batch_size) [N1 + N2 ...] tensor containing the indicies of features to group with
+    //                            用来标记batch idx
     // :param idx: (M1 + M2 ..., nsample) tensor containing the indicies of features to group with
-    // :param idx_batch_cnt: (batch_size) [M1 + M2 ...] tensor containing the indicies of features to group with
+    //             ballquery函数的返回值，用来给每个pcl点选择voxel_center点
+    // :param idx_batch_cnt: (batch_size) [M1 + M2 ...] tensor containing the indicies of features to group with，标记batch
     // :return:
-    //     output: (M1 + M2, C, nsample) tensor
+    //     output: (M1 + M2, C, nsample) tensor，把c长度feature附在query上。
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     int sample_idx = index % nsample;
-    int C_idx = (index / nsample) % C;
-    int pt_idx = (index / nsample / C);
-
+    // index / nsample
+    int C_idx = (index / nsample) % C;  // 一个thread只操作一个channel
+    int pt_idx = (index / nsample / C);  // 每个点有c*nsample个元素
+    
+    // 上限M个点，C个channel，nsample个neighbor
     if (pt_idx >= M || C_idx >= C || sample_idx >= nsample) return;
-
+    
+    // 当前点所在batch idx
     int bs_idx = 0, pt_cnt = idx_batch_cnt[0];
     for (int k = 1; k < B; k++){
         if (pt_idx < pt_cnt) break;
         pt_cnt += idx_batch_cnt[k];
         bs_idx = k;
     }
-
+    
+    // feature在当前batch idx第一个位置
     int features_batch_start_idx = 0;
     for (int k = 0; k < bs_idx; k++) features_batch_start_idx += features_batch_cnt[k];
     features += features_batch_start_idx * C;
 
     idx += pt_idx * nsample + sample_idx;
+    // 最后一个维度最先增长。
     int in_idx = idx[0] * C + C_idx;
     int out_idx = pt_idx * C * nsample + C_idx * nsample + sample_idx;
 
