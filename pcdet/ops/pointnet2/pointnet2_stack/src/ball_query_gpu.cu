@@ -42,6 +42,8 @@ __global__ void ball_query_kernel_stack(int B, int M, float radius, int nsample,
 
     new_xyz += pt_idx * 3;
     xyz += xyz_batch_start_idx * 3;
+    
+    // idx是返回的向量（M, nsample）
     idx += pt_idx * nsample;
 
     float radius2 = radius * radius;
