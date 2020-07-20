@@ -15,22 +15,27 @@ All Rights Reserved 2019-2020.
 
 __global__ void ball_query_kernel_stack(int B, int M, float radius, int nsample, \
     const float *new_xyz, const int *new_xyz_batch_cnt, const float *xyz, const int *xyz_batch_cnt, int *idx) {
-    // :param xyz: (N1 + N2 ..., 3) xyz coordinates of the features
-    // :param xyz_batch_cnt: (batch_size), [N1, N2, ...]
-    // :param new_xyz: (M1 + M2 ..., 3) centers of the ball query
-    // :param new_xyz_batch_cnt: (batch_size), [M1, M2, ...]
+    // :param xyz: (N1 + N2 ..., 3) xyz coordinates of the features，second里面的coor
+    // :param xyz_batch_cnt: (batch_size), [N1, N2, ...]，batch每张的voxel数量
+    // :param new_xyz: (M1 + M2 ..., 3) centers of the ball query，老位置（grid位置）变新位置（亚像素位置，点云中点的位置）
+    // :param new_xyz_batch_cnt: (batch_size), [M1, M2, ...]，每个pcl需要的新位置。
     // output:
     //      idx: (M, nsample)
     int pt_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    
+    // 固定点数
     if (pt_idx >= M) return;
-
+    
+    // pt_cnt：总点数
     int bs_idx = 0, pt_cnt = new_xyz_batch_cnt[0];
+    // 判断在batch哪个pcl里面
     for (int k = 1; k < B; k++){
         if (pt_idx < pt_cnt) break;
         pt_cnt += new_xyz_batch_cnt[k];
         bs_idx = k;
     }
-
+    
+    // batch里当前voxel中心pcl第一个点
     int xyz_batch_start_idx = 0;
     for (int k = 0; k < bs_idx; k++) xyz_batch_start_idx += xyz_batch_cnt[k];
     // for (int k = 0; k < bs_idx; k++) new_xyz_batch_start_idx += new_xyz_batch_cnt[k];
@@ -46,11 +51,16 @@ __global__ void ball_query_kernel_stack(int B, int M, float radius, int nsample,
     int n = xyz_batch_cnt[bs_idx];
 
     int cnt = 0;
+    
+    // 遍历所有pcl中的点
     for (int k = 0; k < n; ++k) {
         float x = xyz[k * 3 + 0];
         float y = xyz[k * 3 + 1];
         float z = xyz[k * 3 + 2];
+        
+        // 验证球半径
         float d2 = (new_x - x) * (new_x - x) + (new_y - y) * (new_y - y) + (new_z - z) * (new_z - z);
+        
         if (d2 < radius2){
             if (cnt == 0){
                 for (int l = 0; l < nsample; ++l) {
@@ -59,6 +69,7 @@ __global__ void ball_query_kernel_stack(int B, int M, float radius, int nsample,
             }
             idx[cnt] = k;
             ++cnt;
+            // 最多nsample个neighbor
             if (cnt >= nsample) break;
         }
     }
