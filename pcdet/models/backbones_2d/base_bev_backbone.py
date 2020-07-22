@@ -6,7 +6,7 @@ class BaseBEVBackbone(nn.Module):
     def __init__(self, model_cfg, input_channels):
         super().__init__()
         self.model_cfg = model_cfg
-
+        # 每一个LAYER就是一个conv2d block，两个block结果上采样concate在一起
         assert len(self.model_cfg.LAYER_NUMS) == len(self.model_cfg.LAYER_STRIDES) == len(self.model_cfg.NUM_FILTERS)
         assert len(self.model_cfg.UPSAMPLE_STRIDES) == len(self.model_cfg.NUM_UPSAMPLE_FILTERS)
         layer_nums = self.model_cfg.LAYER_NUMS
@@ -16,10 +16,12 @@ class BaseBEVBackbone(nn.Module):
         upsample_strides = self.model_cfg.UPSAMPLE_STRIDES
 
         num_levels = len(layer_nums)
-        c_in_list = [input_channels, *num_filters[:-1]]
+        c_in_list = [input_channels, *num_filters[:-1]]  # [320, 128]
         self.blocks = nn.ModuleList()
         self.deblocks = nn.ModuleList()
+        # 创建每一个block
         for idx in range(num_levels):
+            # downsample conv
             cur_layers = [
                 nn.ZeroPad2d(1),
                 nn.Conv2d(
@@ -29,13 +31,17 @@ class BaseBEVBackbone(nn.Module):
                 nn.BatchNorm2d(num_filters[idx], eps=1e-3, momentum=0.01),
                 nn.ReLU()
             ]
+            # block 2D conv
             for k in range(layer_nums[idx]):
                 cur_layers.extend([
                     nn.Conv2d(num_filters[idx], num_filters[idx], kernel_size=3, padding=1, bias=False),
                     nn.BatchNorm2d(num_filters[idx], eps=1e-3, momentum=0.01),
                     nn.ReLU()
                 ])
+            # 完成block
             self.blocks.append(nn.Sequential(*cur_layers))
+            
+            # upsample
             if len(upsample_strides) > 0:
                 self.deblocks.append(nn.Sequential(
                     nn.ConvTranspose2d(
